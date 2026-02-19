@@ -23,7 +23,9 @@ jobs:
         run: pip install requests
 
       - name: 运行抓取脚本
-        run: python get_data.py  # 这行会执行你写好的自动抓取代码
+        run: |
+          ls -R  # 这一行会列出所有文件，帮我们确认 get_data.py 在不在
+          python get_data.py
 
       - name: 保存并提交数据到仓库
         run: |
