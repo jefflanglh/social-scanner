@@ -1,15 +1,15 @@
-name: Hourly Follower Update
+name: Social Update
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时运行一次 (UTC时间)
-  workflow_dispatch:      # 允许手动点击按钮运行
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # 允许脚本修改你的仓库文件
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -25,10 +25,10 @@ jobs:
       - name: Run scraper
         run: python get_data.py
 
-      - name: Commit and Push changes
+      - name: Commit and Push
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add insta.txt
-          git commit -m "Update followers" || exit 0
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Update data files" || exit 0
           git push
