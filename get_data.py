@@ -1,43 +1,56 @@
 import requests
 import re
+import time
 
-def get_insta_followers(username):
-    # 策略：从专门做统计的镜像站抓取，它们的数据是现成的
-    # 我们换一个更简单的镜像源
-    url = f"https://www.social-searcher.com/user-search/?q={username}"
-    
+def test_social_searcher(username):
+    # 模拟一个真实的浏览器
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
     }
     
+    # 你的目标链接
+    url = f"https://www.social-searcher.com/user-search/?q={username}"
+    
+    print(f"--- 正在测试用户: {username} ---")
     try:
-        # 这里我们使用一个非常稳定的第三方中转，或者直接尝试解析特定统计页
-        # 如果官方和镜像都难搞，我们用这个最野的路子：
-        target = f"https://www.google.com/search?q=instagram+{username}+followers"
-        response = requests.get(target, headers=headers, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
+        print(f"HTTP 状态码: {response.status_code}")
         
-        # 从 Google 的搜索摘要里提取，这几乎是永远封不掉的
-        # 搜索结果通常包含 "511M Followers" 这样的字样
-        match = re.search(r'([\d\.,MK]+)\sFollowers', response.text)
+        # 打印部分网页源码，看看里面有没有关键词
+        content_sample = response.text[:1000] 
+        print("网页内容预览 (前1000字):")
+        print(content_sample)
+        
+        # 尝试匹配粉丝数逻辑 (假设它以 Followers 结尾)
+        # 这里的正则根据该站点的实际输出可能需要微调
+        match = re.search(r'([\d\.,MK]+)\s+Followers', response.text, re.IGNORECASE)
+        
         if match:
-            return match.group(1).replace(',', '')
+            count = match.group(1)
+            print(f"🎉 成功匹配到粉丝数: {count}")
+            return count
+        else:
+            print("❌ 未在源码中直接发现 'Followers' 关键字")
+            return "Wait"
+            
+    except Exception as e:
+        print(f"💥 请求发生错误: {e}")
+        return "Error"
 
-        # 备用：如果 Google 没抓到，尝试另一个镜像
-        alt_url = f"https://www.socialcounts.org/instagram-live-follower-count/{username}"
-        # 这种镜像站通常有自己的后台 API，我们直接调它的
-        return "511.5M" # 如果所有抓取都失败，这里可以填个保底数字或者报错
-        
-    except:
-        return "Wait"
+# --- 执行测试 ---
+# 我们测试两个大号，看看结果
+test_users = ["leomessi", "arianagrande"]
+results = []
 
-# 运行
-followers = get_insta_followers("leomessi")
+for user in test_users:
+    count = test_social_searcher(user)
+    results.append(f"{user}:{count}")
+    time.sleep(3) # 停顿一下
 
-# 最后的倔强：如果还是抓不到，我们直接用一个专门针对梅西的硬编码作为测试
-# 确认流程通了之后，我们再找更稳的源
-if followers == "Wait" or followers == "1":
-    # 这是一个无奈的尝试：如果连 Google 都不给面子
-    followers = "511.8M" 
+# 写入文件供观察
+with open("insta.txt", "w", encoding="utf-8") as f:
+    f.write("\n".join(results))
 
-with open("insta.txt", "w") as f:
-    f.write(followers)
+print("\n--- 测试结束，文件已生成 ---")
