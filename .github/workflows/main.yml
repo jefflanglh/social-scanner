@@ -2,14 +2,14 @@ name: Social Media Auto Update
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时自动运行一次
-  workflow_dispatch:      # 允许你手动点击按钮触发更新
+    - cron: '0 * * * *'  # 每小时运行
+  workflow_dispatch:      # 允许手动触发
 
 jobs:
   update-social-data:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # 必须开启这个，才能让 Action 把抓到的数字存回仓库
+      contents: write    
     steps:
       - name: 检出代码
         uses: actions/checkout@v3
@@ -24,14 +24,28 @@ jobs:
 
       - name: 运行抓取脚本
         run: |
-          ls -R  # 这一行会列出所有文件，帮我们确认 get_data.py 在不在
+          # 确保文件名和你仓库里的 python 文件名一致！
+          # 如果你的文件叫 get_data.py 就不用改，否则改成正确的文件名
           python get_data.py
+          
+      - name: 调试：查看生成的文件内容
+        run: |
+          echo "检查生成的 insta.txt 内容:"
+          cat insta.txt || echo "文件不存在"
 
       - name: 保存并提交数据到仓库
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # 关键修改：使用 -A 强制把所有新生成的 twitch.txt 等文件都抓进来
+          
+          # 无论数字变没变，我们都强行更新一个时间戳文件，确保一定能 commit 成功
+          date > last_update_log.txt
+          
           git add -A  
-          git commit -m "Add Twitch and update social data" || exit 0
-          git push
+          # 只有当确实有文件变化时才提交
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Social data updated at $(date)"
+            git push
+          else
+            echo "没有检测到任何数据变化，跳过提交"
+          fi
