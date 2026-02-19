@@ -41,7 +41,7 @@ def get_insta_followers(username):
         return "Wait"
 
 # --- 执行多用户抓取 ---
-users = ["leomessi", "arianagrande"]
+users = ["justin", "brabitt"]
 final_results = []
 
 for user in users:
