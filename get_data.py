@@ -1,61 +1,56 @@
 import requests
-import time
+import json
 
 def get_twitch_followers(username):
-    # 这是 Twitch 搜索框的实时建议接口，它通常不封锁 GitHub IP
-    url = f"https://passport.twitch.tv/public/usernames/{username.lower()}/available"
-    # 我们换一个更高级的：使用 Twitch 内部的 gql 搜索，但只传最小载荷
-    
-    # 备选极其稳健的方案：直接请求 twitch 的手机版并抓取描述（加入特殊的 Cookie 伪装）
-    url = f"https://m.twitch.tv/{username.lower()}"
+    url = "https://gql.twitch.tv/gql"
+    # 这个 Client-ID 是 Twitch 官网公开通用的，不需要申请
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.google.com/'
+        "Client-ID": "kimne78kx3ncx6br8ac4t596jz6qx8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Content-Type": "application/json"
     }
     
+    # 构造查询指令，直接问 Twitch 的数据库要这个 ID 的粉丝数
+    query = [{
+        "operationName": "ChannelShell",
+        "variables": {"login": username.lower()},
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "580ab410bcd0c7ad617cc096202271da3a33903bafda0fd14e8682e9751431e8"
+            }
+        }
+    }]
+
     try:
-        print(f"--- 尝试通过搜索指纹抓取 Twitch: {username} ---")
-        # 使用 Session 保持连接
-        session = requests.Session()
-        response = session.get(url, headers=headers, timeout=15)
+        print(f"--- 尝试通过官方 GQL 接口抓取: {username} ---")
+        response = requests.post(url, headers=headers, json=query, timeout=15)
         
         if response.status_code == 200:
-            # 在手机版页面中，粉丝数通常以 "followerCount":1234 这种格式存在
-            import re
-            # 搜索各种可能的数字标签
-            match = re.search(r'"followerCount":(\d+)', response.text)
-            if match:
-                count = match.group(1)
-                print(f">>> 成功抓取数字: {count}")
-                return str(count)
+            data = response.json()
+            # 这里的路径非常深，我们需要小心提取
+            # data[0] -> data -> user -> followers -> totalCount
+            user_data = data[0].get('data', {}).get('user')
+            if user_data:
+                followers = user_data.get('followers', {}).get('totalCount')
+                if followers is not None:
+                    print(f">>> 抓取成功！当前粉丝数: {followers}")
+                    return str(followers)
             
-            # 备选匹配：匹配 "1.2K Followers" 或 "22 Followers"
-            match_alt = re.search(r'([\d\.,MK]+)\s?followers', response.text, re.I)
-            if match_alt:
-                count = match_alt.group(1).replace(',', '')
-                print(f">>> 成功通过 Meta 抓取: {count}")
-                return count
-        
-        print(f"状态码: {response.status_code}。Twitch 拒绝了 GitHub IP 的直接访问。")
-        
-        # --- 绝招：如果上面都失败，使用一个无需 Token 的公共代理 ---
-        print("启动代理穿透模式...")
-        proxy_url = f"https://api.allorigins.win/get?url=https://m.twitch.tv/{username.lower()}"
-        resp = requests.get(proxy_url, timeout=15)
-        if resp.status_code == 200:
-            content = resp.json()['contents']
-            match = re.search(r'"followerCount":(\d+)', content)
-            if match:
-                return str(match.group(1))
-                
+            print(f"解析失败，返回内容: {data}")
+        else:
+            print(f"GQL 接口响应错误: {response.status_code}")
+            
     except Exception as e:
-        print(f"异常: {e}")
+        print(f"GQL 运行异常: {e}")
     
     return "0"
 
-# 执行并写入
-val = get_twitch_followers("fattyprophet")
+# --- 执行并写入 ---
+twitch_val = get_twitch_followers("fattyprophet")
 with open("twitch.txt", "w", encoding="utf-8") as f:
-    f.write(val)
-print(f"最终结果: {val}")
+    f.write(twitch_val)
+
+# 同时也把 Facebook 带上，确保它不丢失
+# (这里建议保留你之前的 FB 抓取代码，或者先测试 Twitch)
+print(f"最终写入文件: {twitch_val}")
