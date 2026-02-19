@@ -2,25 +2,31 @@ import requests
 import os
 
 def save_data(filename, content):
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(str(content))
-        print(f"Successfully saved {filename}")
-    except Exception as e:
-        print(f"Failed to save {filename}: {e}")
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(str(content))
 
+# --- 尝试抓取数据 ---
 def fetch_all():
-    # --- Instagram 部分 ---
-    insta_val = "511.5M" # 默认值
-    # 这里可以放你之前的抓取逻辑...
+    # 1. Instagram 保底逻辑
+    insta_val = "511.5M" 
+    try:
+        # 你之前的抓取代码... (这里简化，确保先成功)
+        pass 
+    except:
+        pass
     save_data("insta.txt", insta_val)
 
-    # --- Facebook 暴力测试部分 ---
-    # 我们先不抓取真实网页，先强行生成文件测试链路
-    fb_val = "120M" 
+    # 2. Facebook 暴力保底逻辑
+    fb_val = "120M" # 先给个假数字测试链路
+    try:
+        # 尝试访问一个不需要复杂验证的镜像或直接模拟
+        # 暂时先用保底数字，确保 fb.txt 能出现在仓库里
+        pass
+    except:
+        pass
     save_data("fb.txt", fb_val)
 
-    print(f"All tasks done. Insta: {insta_val}, FB: {fb_val}")
+    print(f"Done! Insta: {insta_val}, FB: {fb_val}")
 
 if __name__ == "__main__":
     fetch_all()
