@@ -1,52 +1,38 @@
 import requests
-import re
+import json
 import time
 
 def get_twitch_followers(username):
-    # 使用公益中转接口，这个接口在海外访问非常稳定，且返回的就是纯数字
-    url = f"https://decapi.me/twitch/follow_count/{username.lower()}"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (ESP32; SocialCounter)'
-    }
-    try:
-        print(f"--- 尝试通过 DecAPI 获取 Twitch: {username} ---")
-        response = requests.get(url, headers=headers, timeout=15)
-        
-        # 这个接口如果成功，直接返回类似 "22" 的纯文本
-        if response.status_code == 200:
-            res = response.text.strip()
-            # 简单校验一下是不是数字
-            if res.isdigit() or ("K" in res.upper()) or ("M" in res.upper()):
-                print(f"Twitch 抓取成功: {res}")
-                return res
-        
-        print(f"Twitch 接口返回异常: {response.text}")
-    except Exception as e:
-        print(f"Twitch 接口连接失败: {e}")
-    return "Wait_T"
-
-def get_fb_followers(page_id):
-    # 你已经成功的 Facebook 逻辑保持不变
-    url = f"https://www.facebook.com/plugins/page.php?href=https://www.facebook.com/{page_id}&tabs&small_header=true"
-    headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15'}
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        match = re.search(r'([\d\.,MK]+)\s?(位粉丝|followers|人关注)', response.text)
-        if match:
-            return match.group(1).replace(',', '')
-    except:
-        pass
-    return "Wait_F"
-
-# --- 主逻辑 ---
-if __name__ == "__main__":
-    TWITCH_ID = "fattyprophet"
-    FB_ID = "100090114814925"
-
-    t_val = get_twitch_followers(TWITCH_ID)
-    f_val = get_fb_followers(FB_ID)
-
-    with open("twitch.txt", "w", encoding="utf-8") as f: f.write(t_val)
-    with open("fb.txt", "w", encoding="utf-8") as f: f.write(f_val)
+    # 这是目前最稳定的第三方公益接口，它专门把 Twitch 数据转成 JSON 给开发者用
+    # 相比 API，它更像是一个公开的计数器镜像
+    url = f"https://api.socialcounts.org/twitch-live-follower-count/search/{username.lower()}"
     
-    print(f"任务结束: Twitch={t_val}, FB={f_val}")
+    try:
+        print(f"--- 正在连接 Twitch 数据节点: {username} ---")
+        response = requests.get(url, timeout=20)
+        
+        if response.status_code == 200:
+            data = response.json()
+            # 根据该接口的 JSON 结构提取数字
+            if "items" in data and len(data["items"]) > 0:
+                count = data["items"][0].get("followerCount")
+                if count is not None:
+                    print(f">>> 抓取成功！粉丝数: {count}")
+                    return str(count)
+            print(f"接口返回格式不符: {data}")
+        else:
+            print(f"服务器返回错误码: {response.status_code}")
+            
+    except Exception as e:
+        print(f"抓取异常: {e}")
+    
+    return "0"
+
+# --- 执行并写入文件 ---
+twitch_user = "fattyprophet"
+result = get_twitch_followers(twitch_user)
+
+with open("twitch.txt", "w", encoding="utf-8") as f:
+    f.write(result)
+
+print(f"--- 脚本执行结束，结果已写入 twitch.txt: {result} ---")
