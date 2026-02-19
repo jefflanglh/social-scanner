@@ -31,6 +31,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add insta.txt fb.txt  # 确保这两个文件都被加入保存列表
-          git commit -m "Auto-update social followers" || exit 0
+          # 关键修改：使用 -A 强制把所有新生成的 twitch.txt 等文件都抓进来
+          git add -A  
+          git commit -m "Add Twitch and update social data" || exit 0
           git push
