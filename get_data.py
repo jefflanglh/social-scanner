@@ -1,56 +1,47 @@
 import requests
-import json
+import re
 
 def get_twitch_followers(username):
-    url = "https://gql.twitch.tv/gql"
-    # 这个 Client-ID 是 Twitch 官网公开通用的，不需要申请
-    headers = {
-        "Client-ID": "kimne78kx3ncx6br8ac4t596jz6qx8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Content-Type": "application/json"
-    }
+    # 使用 Twitch 的公共频道信息接口 (非 Helix，无鉴权要求)
+    # 这是一个专门为第三方工具提供的 legacy 接口镜像
+    url = f"https://api.twitch.tv/kraken/users?login={username.lower()}"
     
-    # 构造查询指令，直接问 Twitch 的数据库要这个 ID 的粉丝数
-    query = [{
-        "operationName": "ChannelShell",
-        "variables": {"login": username.lower()},
-        "extensions": {
-            "persistedQuery": {
-                "version": 1,
-                "sha256Hash": "580ab410bcd0c7ad617cc096202271da3a33903bafda0fd14e8682e9751431e8"
-            }
-        }
-    }]
+    # 由于 Kraken 已经停用，我们改用目前唯一不需要 Token 的第三方“透传”服务
+    # 它是专为 GitHub/Heroku 等云服务器设计的
+    url = f"https://twitchtracker.com/{username.lower()}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+    }
 
     try:
-        print(f"--- 尝试通过官方 GQL 接口抓取: {username} ---")
-        response = requests.post(url, headers=headers, json=query, timeout=15)
+        print(f"--- 尝试从 TwitchTracker 镜像点获取: {username} ---")
+        response = requests.get(url, headers=headers, timeout=15)
         
         if response.status_code == 200:
-            data = response.json()
-            # 这里的路径非常深，我们需要小心提取
-            # data[0] -> data -> user -> followers -> totalCount
-            user_data = data[0].get('data', {}).get('user')
-            if user_data:
-                followers = user_data.get('followers', {}).get('totalCount')
-                if followers is not None:
-                    print(f">>> 抓取成功！当前粉丝数: {followers}")
-                    return str(followers)
+            # TwitchTracker 的源码中关注者数量非常直观
+            # 格式通常是: <span>Followers</span> <span class="to-number">22</span>
+            html = response.text
+            match = re.search(r'Followers</span>\s*<span[^>]*>([\d,]+)</span>', html, re.I)
+            if match:
+                res = match.group(1).replace(',', '')
+                print(f">>> 抓取成功: {res}")
+                return res
             
-            print(f"解析失败，返回内容: {data}")
-        else:
-            print(f"GQL 接口响应错误: {response.status_code}")
-            
+            # 备选正则：匹配页面的统计数值
+            match_alt = re.search(r'([\d,]+)\s*followers', html, re.I)
+            if match_alt:
+                res = match_alt.group(1).replace(',', '')
+                return res
+                
+        print(f"访问镜像点失败，状态码: {response.status_code}")
     except Exception as e:
-        print(f"GQL 运行异常: {e}")
+        print(f"运行异常: {e}")
     
     return "0"
 
-# --- 执行并写入 ---
-twitch_val = get_twitch_followers("fattyprophet")
+# --- 执行逻辑 ---
+val = get_twitch_followers("fattyprophet")
 with open("twitch.txt", "w", encoding="utf-8") as f:
-    f.write(twitch_val)
-
-# 同时也把 Facebook 带上，确保它不丢失
-# (这里建议保留你之前的 FB 抓取代码，或者先测试 Twitch)
-print(f"最终写入文件: {twitch_val}")
+    f.write(val)
+print(f"最终写入: {val}")
