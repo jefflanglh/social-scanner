@@ -5,36 +5,27 @@ import os
 
 # --- 1. Twitch 抓取函数 (GQL 方案) ---
 def get_twitch_followers(username):
-    url = "https://gql.twitch.tv/gql"
-    # 这是一个通用的公共 Client-ID，网页版 Twitch 也在用它
+    # 使用 Twitch 的全量页面，但伪装成一个普通的爬虫
+    url = f"https://www.twitch.tv/{username.lower()}/about"
     headers = {
-        "Client-ID": "kimne78kx3ncx6br8ac4t596jz6qx8", 
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
     }
-    # 这是一个专门查询频道基础信息的持久化查询 SHA
-    query = [{
-        "operationName": "ChannelShell",
-        "variables": {"login": username.lower()},
-        "extensions": {
-            "persistedQuery": {
-                "version": 1,
-                "sha256Hash": "580ab410bcd0c7ad617cc096202271da3a33903bafda0fd14e8682e9751431e8"
-            }
-        }
-    }]
-
     try:
-        print(f"--- 尝试 GQL 抓取 Twitch: {username} ---")
-        response = requests.post(url, json=query, headers=headers, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
-            followers = data[0]['data']['user']['followers']['totalCount']
-            print(f"Twitch 抓取成功: {followers}")
-            return str(followers)
-        else:
-            print(f"Twitch GQL 响应异常: {response.status_code}")
+        print(f"--- 尝试元数据抓取 Twitch: {username} ---")
+        response = requests.get(url, headers=headers, timeout=15)
+        html = response.text
+        
+        # 匹配 "123 followers" 或 "123 位粉丝"
+        # Twitch 的 Meta Data 格式非常固定
+        match = re.search(r'([\d\.,MK]+)\s?(followers|关注者|位粉丝)', html, re.I)
+        if match:
+            res = match.group(1).replace(',', '')
+            print(f"Twitch 元数据抓取成功: {res}")
+            return res
+            
+        print("Twitch 正则未匹配到内容")
     except Exception as e:
-        print(f"Twitch 抓取报错: {e}")
+        print(f"Twitch 请求异常: {e}")
     return "Wait_T"
 
 # --- 2. Facebook 抓取函数 (插件方案) ---
